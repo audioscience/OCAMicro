@@ -21,7 +21,7 @@
 
 // ---- Helper types and constants ----
 #ifndef OCA_BUFFER_SIZE
-#define OCA_BUFFER_SIZE 4096
+#define OCA_BUFFER_SIZE 16000
 #endif
 // ---- Helper functions ----
 
