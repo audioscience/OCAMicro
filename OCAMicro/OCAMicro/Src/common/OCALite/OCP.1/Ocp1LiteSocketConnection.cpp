@@ -206,6 +206,7 @@ bool Ocp1LiteSocketConnection::HasPendingMessage() const
         }
         else
         {
+            OCA_LOG_ERROR_PARAMS("Message too large %d > %d or %p NULL", pHeader.GetMessageSize(), messageSendBufferSize, pMessageSendBuffer);
             result = OCASTATUS_BUFFER_OVERFLOW;
         }
     }
