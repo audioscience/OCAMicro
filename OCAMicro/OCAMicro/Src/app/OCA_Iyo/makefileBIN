@@ -40,8 +40,10 @@ SRC_INC = $(OCA_HOME)/../Application/src \
 		  ./HostInterface/OCA/OCP.1 \
 		  $(OCA_HOME)/Src/app/OCALiteDante \
 
-SRCS  = OCALiteDante.cpp \
-		OCALiteOCCFactory.cpp \
+SRCS  = OCALiteIyo.cpp \
+		OCALiteIyoOCCFactory.cpp \
+		OcaLiteIyoPhantomActuator.cpp \
+		OcaLiteIyoLevelActuator.cpp \
 		Ocp1HostInterfaceOcaLite.cpp \
 		OcaLiteOcp1Network.cpp \
 		OcaLiteOcp1Socket.cpp \

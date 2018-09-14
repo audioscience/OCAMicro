@@ -15,6 +15,9 @@
 #include "OcaLiteDanteMediaClock.h"
 #include "OcaLiteDanteLvlSensor.h"
 
+#include "OcaLiteIyoPhantomActuator.h"
+#include "OcaLiteIyoLevelActuator.h"
+
 #define kNumberObjects    (2)
 static bool mInitialized = false;
 static OcaLiteRoot *m_Objects[kNumberObjects];
@@ -23,6 +26,18 @@ int m_NumberOfMeters = 0;
 int m_NumberOfInputMeters = 0;
 int m_NumberOfOutputMeters = 0;
 ::OcaONo m_OcaMeterObjStart;
+
+
+class OcaLiteNodeBlock : public :: OcaLiteBlock
+{
+public:
+    OcaLiteNodeBlock(::OcaONo objectNumber, ::OcaBoolean lockable, const ::OcaLiteString& role, const ::OcaLiteList< ::OcaLitePort>& ports);
+};
+
+OcaLiteNodeBlock::OcaLiteNodeBlock(::OcaONo objectNumber, ::OcaBoolean lockable, const ::OcaLiteString& role, const ::OcaLiteList< ::OcaLitePort>& ports)
+: ::OcaLiteBlock(objectNumber, lockable, role, ports, objectNumber)
+{
+}
 
 OcaLiteStatus OCALiteOCCFactoryCreate()
 {
@@ -169,42 +184,88 @@ OcaLiteStatus OCALiteOCCFactoryCreate()
 
 #ifdef DANTE_CM_METERING_SUBSCRIPTIONS
     m_OcaMeterObjStart = streamEndONo;
+
+    ::OcaONo meterONo = streamStartONo+100;
+    ::OcaONo levelONo = streamStartONo+200;
+    ::OcaONo phantomONo = streamStartONo+300;
     // Now create the meter objects, physical inputs first (network Tx)
     int meterStart = 0;
     OcaLiteList<OcaLitePort> gPorts;
     for(int i = 0; i < nrTxChannels; i++) {
         char name[32];
-        sprintf(name, "InputLvl-%d", i+1);
+        #if 0
+        sprintf(name, "asi:node:dante.out.%d", i+1);
+        // Create container block
+        OcaLiteBlock *blk = new OcaLiteNodeBlock( static_cast< ::OcaONo>(streamEndONo+100),
+                                                        static_cast< ::OcaBoolean>(false),
+                                                        static_cast<OcaLiteString>(name),
+                                                        gPorts);
+        //reinterpret_cast<OcaLiteBlock *>(OcaLiteBlock::GetRootBlock().GetObject(100))->AddObject(*blk);
+        //::OcaLiteBlock::GetRootBlock().AddObject(*blk);
+        #endif
+        sprintf(name, "asi:ctrl:dante.out.%d.meter", i+1);
         // create object
-        m_Meters[meterStart] = new OCALiteDanteLvlSensor( static_cast< ::OcaONo>(streamEndONo),
+        OCALiteDanteLvlSensor *lvl = new OCALiteDanteLvlSensor( static_cast< ::OcaONo>(meterONo++),
                                                         static_cast< ::OcaBoolean>(false),
                                                         static_cast<OcaLiteString>(name),
                                                         gPorts,
                                                         static_cast< ::OcaDB>(-128),
                                                         static_cast< ::OcaDB>(1));
+        //blk->AddObject(*lvl);
+        m_Meters[meterStart] = lvl;
         // initialize
         reinterpret_cast<OCALiteDanteLvlSensor *>(m_Meters[meterStart])->Initialize();
+
+        OcaLiteIyoPhantomActuator *ph = OcaLiteIyoPhantomActuator::build_new(phantomONo++, i+1);
+        ::OcaLiteBlock::GetRootBlock().AddObject(*ph);
+
+        OcaLiteIyoLevelActuator *l = OcaLiteIyoLevelActuator::build_new(levelONo++, true, i+1);
+        ::OcaLiteBlock::GetRootBlock().AddObject(*l);
+
         // increment
-        streamEndONo++;
         meterStart++;
     }
     // Physical Outputs next (network Rx)
     for(int i = 0; i < nrRxChannels; i++) {
         char name[32];
-        sprintf(name, "OutputLvl-%d", i+1);
+        #if 0
+        sprintf(name, "asi:node:dante.in.%d", i+1);
+        // Create container block
+        OcaLiteBlock *blk = new OcaLiteNodeBlock( static_cast< ::OcaONo>(streamEndONo+200),
+                                                        static_cast< ::OcaBoolean>(false),
+                                                        static_cast<OcaLiteString>(name),
+                                                        gPorts);
+        //reinterpret_cast<OcaLiteBlock *>(OcaLiteBlock::GetRootBlock().GetObject(100))->AddObject(*blk);
+        //::OcaLiteBlock::GetRootBlock().AddObject(*blk);
+        #endif
+        sprintf(name, "asi:ctrl:dante.in.%d.meter", i+1);
         // create object
-        m_Meters[meterStart] = new OCALiteDanteLvlSensor( static_cast< ::OcaONo>(streamEndONo),
+        OCALiteDanteLvlSensor *lvl = new OCALiteDanteLvlSensor( static_cast< ::OcaONo>(meterONo++),
                                                         static_cast< ::OcaBoolean>(false),
                                                         static_cast<OcaLiteString>(name),
                                                         gPorts,
                                                         static_cast< ::OcaDB>(-128),
                                                         static_cast< ::OcaDB>(1));
+        //blk->AddObject(*lvl);
+        m_Meters[meterStart] = lvl;
         // initialize
         reinterpret_cast<OCALiteDanteLvlSensor *>(m_Meters[meterStart])->Initialize();
+
+        OcaLiteIyoLevelActuator *l = OcaLiteIyoLevelActuator::build_new(levelONo++, false, i+1);
+        ::OcaLiteBlock::GetRootBlock().AddObject(*l);
+
         // increment
-        streamEndONo++;
         meterStart++;
     }
+
+#if 0
+    OcaLiteList<OcaLitePort> gPortsb;
+    OcaLiteBlock *blk = new OcaLiteNodeBlock( static_cast< ::OcaONo>(streamEndONo++),
+                                                    static_cast< ::OcaBoolean>(false),
+                                                    static_cast<OcaLiteString>("Block 1"),
+                                                    gPortsb);
+    ::OcaLiteBlock::GetRootBlock().AddObject(*blk);
+#endif
     m_NumberOfMeters = meterStart;
     m_NumberOfInputMeters  = nrTxChannels;
     m_NumberOfOutputMeters = nrRxChannels;
