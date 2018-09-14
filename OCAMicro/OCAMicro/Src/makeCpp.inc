@@ -241,6 +241,75 @@ ifneq ($(PLATFORM),)
 
     endif #ifeq ($(PLATFORM),stm32App)
 
+    ifeq ($(PLATFORM),linuxApp)
+
+      ifneq ($(RELEASE),Lint)
+        RM := rm -f
+        MD := mkdir -p
+        RN := mv _PATH__OLDNAME_ _PATH__NEWNAME_
+        RD := rm -rf
+        IFEXIST    := if [ -e "_FILE_" ]; then _COMMAND_; fi
+        IFNOTEXIST := if [ ! -e "_FILE_" ]; then _COMMAND_; fi
+        PATH_SEP := /
+      endif
+
+### linux #################################################################
+
+      ifeq ($(RELEASE),Release)
+
+    PATH_SEP := $(subst \\,/,/)
+    LSTFILE := $(subst \,/,$(INTDIR)/obj-list.lst)
+    
+        # Tools
+    AS := gcc
+        CC := g++
+    SD := gcc -M
+
+        # Determine the extensions for the target platform
+        OBJ_EXT := o
+        DEP_EXT := dep
+        EXE_EXT :=
+        LIB_EXT := a
+        DLL_EXT := so
+
+        # Lists
+        OBJS := $(patsubst %.cpp,%.$(OBJ_EXT),$(SRCS) $(UBLAZESRCS))
+        OBJS := $(patsubst %.c,%.$(OBJ_EXT),$(OBJS))
+        DEPS := $(patsubst %.$(OBJ_EXT),%.$(DEP_EXT),$(OBJS))
+        LIBS := $(LIBS) $(UBLAZELIBS) $(EXTERNAL_LIBS)
+        LIBS := $(addsuffix .$(LIB_EXT), $(LIBS))
+        LIBS := $(addprefix $(OUTDIR)/, $(LIBS))
+        UBLAZESYSTEMLIBS := $(addprefix -l, $(UBLAZESYSTEMLIBS))
+
+        SDFLAGS := -s -Os -nostdlib -fno-strict-aliasing -fno-exceptions -ffunction-sections -fdata-sections -c -Wall -x none \
+                   -I"$(subst ;," -I",$(INCDIRS))" -I$(DANTE_PATH)/dev/include/audinate \
+                   -I$(DANTE_PATH)/dev/include/audinate/dante  -I$(DANTE_PATH)/dev/include/audinate/conmon \
+                   -I$(DANTE_PATH)/dev/include/  -I$(DANTE_PATH)/dev/include/linux-2.4.x \
+           -DTARGET_LINUX -DCAP6 -D"CPPUNIT_TUI_VERSION" \
+                   $(foreach USRDEF,$(USRDEFS),-D"$(USRDEF)") \
+                   $(foreach USRUNDEF,$(USRUNDEFS),-U"$(USRUNDEF)")
+        CCFLAGS = $(SDFLAGS) -D NDEBUG -Wall -o $(INTDIR)/$@
+
+        ifeq ($(TYPE),EXE)
+          OUT_EXT := $(EXE_EXT)
+          LD := g++
+          LDFLAGS = -L$(DANTE_PATH)/dev/lib -L$(OUTDIR) -o$@
+        endif
+        ifeq ($(TYPE),LIB)
+          OUT_EXT := $(LIB_EXT)
+          LD := ar
+          LDFLAGS = crus $@
+        endif
+        ifeq ($(TYPE),DLL)
+          OUT_EXT := $(DLL_EXT)
+          LD := ld
+          LDFLAGS = -o$@
+        endif
+      endif
+
+    endif #ifeq ($(PLATFORM),uBlazeApp)
+    
+
     ifeq ($(PLATFORM),uBlazeApp)
 
       ifneq ($(RELEASE),Lint)
@@ -372,6 +441,19 @@ stm32Release:
 	$(PREFIX)echo $@ not configured for $(NAME)
   endif
 
+linuxRelease:
+  ifneq (,$(findstring linux,$(TARGETS)))
+	$(PREFIX)$(MAKE) -f $(NAME_MKE) $(NAME) PLATFORM=linuxApp RELEASE=Release
+  else
+	$(PREFIX)echo $@ not configured for $(NAME)
+  endif
+
+linuxReleaseClean:
+  ifneq (,$(findstring linux,$(TARGETS)))
+	$(PREFIX)$(MAKE) -f $(NAME_MKE) $(NAME) --no-print-directory PLATFORM=linuxApp RELEASE=Release CLEAN=Yes
+  else
+	$(PREFIX)echo $@ not configured for $(NAME)
+  endif
 
 uBlazeRelease:
   ifneq (,$(findstring uBlaze,$(TARGETS)))
@@ -485,6 +567,8 @@ $(OUTFILE): $(INTDIR)/$(NAME).x $(OBJS) $(LIBS) $(NAME_MKE)
 	$(foreach lib,$(LIBS),$(shell echo $(OUTDIR)/$(lib) >> $(LSTFILE)))
     endif  
     ifeq ($(PLATFORM),uBlazeApp)
+	$(PREFIX)$(subst \,/,$(LD)) $(subst \,/,$(LDFLAGS)) $(foreach obj,$(OBJS),$(INTDIR)/$(obj)) $(LIBS) $(UBLAZESYSTEMLIBS)
+    else ifeq ($(PLATFORM),linuxApp)
 	$(PREFIX)$(subst \,/,$(LD)) $(subst \,/,$(LDFLAGS)) $(foreach obj,$(OBJS),$(INTDIR)/$(obj)) $(LIBS) $(UBLAZESYSTEMLIBS)
     else
 	$(PREFIX)$(subst \,/,$(LD)) $(subst \,/,$(LDFLAGS)) @$(LSTFILE)

@@ -12,6 +12,7 @@
 /* Generic definitions according to the platform used */
 #include <string.h>    // memset
 #include <stdio.h>
+#include <stdlib.h>
 
 #define DLL_EXPORT
 #define DLL_IMPORTf
